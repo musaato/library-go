@@ -20,7 +20,7 @@ func main() {
 	// create a new author
 	r.POST("/authors", controllers.AuthorCreate)
 
-	// fetch all authors
+	// fetch paginated authors
 	r.GET("/authors", controllers.AuthorIndex)
 
 	// fetch an author

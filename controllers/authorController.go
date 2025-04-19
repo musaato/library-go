@@ -5,6 +5,7 @@ import (
 	"library-Go/models"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -54,17 +55,41 @@ func AuthorCreate(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"author": author})
 }
 
-// fetch all authors
+// fetch paginated authors
+// http://localhost:7070/authors?pageNum=1&pageSize=5
 func AuthorIndex(c *gin.Context) {
-	// get the authors
+
+	pageNumStr := c.Query("pageNum")
+	pageSizeStr := c.Query("pageSize")
+
+	pageNum, err1 := strconv.Atoi(pageNumStr)
+	if err1 != nil || pageNum < 1 {
+		pageNum = 1
+	}
+	pageSize, err2 := strconv.Atoi(pageSizeStr)
+	if err2 != nil || pageSize < 1 {
+		pageSize = 5
+	}
+
+	offset := (pageNum - 1) * pageSize
+
 	var authors []models.Author
+	var totalCount int64
 
-	initializers.DB.Find(&authors)
+	countResult := initializers.DB.Model(&models.Author{}).Count(&totalCount)
+	fetchResult := initializers.DB.Order("id").
+		Limit(pageSize).
+		Offset(offset).
+		Find(&authors)
 
-	// log.Printf("Author struct: %+v\n", authors)
-	// respond with them
-	c.JSON(200, gin.H{
-		"authors": authors,
+	if countResult.Error != nil || fetchResult.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch authors' data"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"authors":    authors,
+		"totalCount": totalCount,
 	})
 
 }
